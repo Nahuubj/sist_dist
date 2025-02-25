@@ -76,8 +76,7 @@ const Card = ({ server, currentTime, currentDate }) => {
                             </p>
                         </div>
 
-                        {/* Gráfica de pastel corregida */}
-                        <div className="w-full h-52 flex justify-center">
+                        {/* <div className="w-full h-52 flex justify-center">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -97,7 +96,7 @@ const Card = ({ server, currentTime, currentDate }) => {
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
-                        </div>
+                        </div> */}
                     </>
                 )}
             </div>

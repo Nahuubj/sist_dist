@@ -6,10 +6,18 @@ import time
 import os
 
 def get_ram_memory():
+    """Obtiene el porcentaje de uso de RAM"""
     mem = pct.virtual_memory()
-    return mem.total
+    return mem.percent  # Devuelve porcentaje usado
+
+def get_disk_usage():
+    """Obtiene el porcentaje de uso del disco principal"""
+    disk_path = '/' if os.name != 'nt' else 'C:'
+    disk = pct.disk_usage(disk_path)
+    return disk.percent  # Devuelve porcentaje usado
 
 def get_ip_address():
+    """Obtiene la IP local del dispositivo"""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("8.8.8.8", 80))
@@ -21,35 +29,28 @@ def get_ip_address():
     return ip
 
 def get_mac_address():
+    """Obtiene la dirección MAC del dispositivo"""
     for interface, addrs in pct.net_if_addrs().items():
         for addr in addrs:
-            if addr.family == pct.AF_LINK:  # Verifica si es una MAC Address
+            if addr.family == pct.AF_LINK:
                 return addr.address
-    return "00:00:00:00:00:00"  # En caso de error, devuelve una MAC por defecto
+    return "00:00:00:00:00:00"  # Valor por defecto en caso de error
 
-def main():
+def send_data():
+    """Envía los datos al servidor"""
     host = '192.168.0.169'
     port = 5700
 
-    # Definir ruta del disco según el sistema operativo
-    disk_path = '/' if os.name != 'nt' else 'C:'
-
-    my_disk = pct.disk_usage(disk_path)
-    my_usage_disk = my_disk.used
-    my_free_disk = my_disk.free
-    my_storage = my_disk.total
-
+    disk_usage = get_disk_usage()
+    ram_usage = get_ram_memory()
     ip = get_ip_address()
-    ram = get_ram_memory()
-    mac = get_mac_address()  # Obtener la MAC Address
+    mac = get_mac_address()
 
     data = {
         "macAddress": mac,
-        "totalDisk": my_storage,
-        "diskUsage": my_usage_disk,
-        "diskFree": my_free_disk,
-        "ipAddress": ip,
-        "ramMemory": ram
+        "diskUsage": disk_usage,
+        "ramUsage": ram_usage,
+        "ipAddress": ip
     }
 
     json_data = json.dumps(data)
@@ -62,12 +63,23 @@ def main():
     finally:
         sock.close()
 
-def run_main_every_5_seconds():
+def monitor_changes():
+    """Detecta cambios en RAM o disco y envía datos al servidor solo si hay variación"""
+    prev_ram = get_ram_memory()
+    prev_disk = get_disk_usage()
+
     while True:
-        main()
-        time.sleep(3)  # Ahora realmente espera 5 segundos
+        time.sleep(5)  # Chequea cada 5 segundos
 
-thread = threading.Thread(target=run_main_every_5_seconds)
+        current_ram = get_ram_memory()
+        current_disk = get_disk_usage()
+
+        if current_ram != prev_ram or current_disk != prev_disk:
+            send_data()  # Envía datos al servidor
+            prev_ram = current_ram  # Actualiza valores previos
+            prev_disk = current_disk
+
+# Iniciar el monitoreo en un hilo separado
+thread = threading.Thread(target=monitor_changes)
 thread.start()
-
 thread.join()

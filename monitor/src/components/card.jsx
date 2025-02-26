@@ -1,5 +1,5 @@
 import React from 'react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, Bar } from 'recharts';
 
 const COLORS = ['#EF4444', '#10B981']; // Rojo (Usado), Verde (Libre)
 
@@ -76,7 +76,7 @@ const Card = ({ server, currentTime, currentDate }) => {
                             </p>
                         </div>
 
-                        {/* <div className="w-full h-52 flex justify-center">
+                        {/*<div className="w-full h-52 flex justify-center">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -96,7 +96,9 @@ const Card = ({ server, currentTime, currentDate }) => {
                                     <Legend />
                                 </PieChart>
                             </ResponsiveContainer>
-                        </div> */}
+                        </div> 
+
+                            */}
                     </>
                 )}
             </div>

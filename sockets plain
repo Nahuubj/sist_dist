@@ -1,0 +1,391 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 17.3
+-- Dumped by pg_dump version 17.3
+
+-- Started on 2025-02-26 01:20:10
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- TOC entry 223 (class 1255 OID 32845)
+-- Name: log_client_changes(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.log_client_changes() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    change_desc TEXT := 'Update: ';
+BEGIN
+    IF OLD.ip IS DISTINCT FROM NEW.ip THEN
+        change_desc := change_desc || 'IP changed from ' || OLD.ip || ' to ' || NEW.ip || '. ';
+    END IF;
+
+    IF OLD.mac IS DISTINCT FROM NEW.mac THEN
+        change_desc := change_desc || 'MAC changed from ' || OLD.mac || ' to ' || NEW.mac || '. ';
+    END IF;
+
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+        change_desc := change_desc || 'Status changed from ' || OLD.status || ' to ' || NEW.status || '. ';
+    END IF;
+
+    IF change_desc <> '' THEN
+        INSERT INTO ClientLog (client_id, action, change_description, log_date)
+        VALUES (NEW.id, 'UPDATEe', change_desc, CURRENT_TIMESTAMP);
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.log_client_changes() OWNER TO postgres;
+
+--
+-- TOC entry 224 (class 1255 OID 32847)
+-- Name: log_client_insert(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE FUNCTION public.log_client_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    -- Insertar en ClientLog los datos del nuevo cliente
+    INSERT INTO ClientLog (client_id, action, change_description, log_date)
+    VALUES (
+        NEW.id, 
+        'INSERT', 
+        'New client added - ID: ' || NEW.id || 
+        ', IP: ' || NEW.ip || ', MAC: ' || NEW.mac || ', Created at: ' || NEW.created_at, 
+        CURRENT_TIMESTAMP
+    );
+
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION public.log_client_insert() OWNER TO postgres;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 218 (class 1259 OID 24684)
+-- Name: client; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.client (
+    id integer NOT NULL,
+    ip character varying(45) NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    status character varying(50) NOT NULL,
+    deleted boolean DEFAULT false,
+    mac character varying(50) NOT NULL,
+    password character varying(255) NOT NULL,
+    name character varying(20)
+);
+
+
+ALTER TABLE public.client OWNER TO postgres;
+
+--
+-- TOC entry 217 (class 1259 OID 24683)
+-- Name: client_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.client_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.client_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 4827 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: client_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.client_id_seq OWNED BY public.client.id;
+
+
+--
+-- TOC entry 220 (class 1259 OID 24700)
+-- Name: clientlog; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.clientlog (
+    id integer NOT NULL,
+    client_id integer,
+    change_description text NOT NULL,
+    log_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    action character varying(100) NOT NULL
+);
+
+
+ALTER TABLE public.clientlog OWNER TO postgres;
+
+--
+-- TOC entry 219 (class 1259 OID 24699)
+-- Name: clientlog_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.clientlog_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.clientlog_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 4828 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: clientlog_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.clientlog_id_seq OWNED BY public.clientlog.id;
+
+
+--
+-- TOC entry 222 (class 1259 OID 32833)
+-- Name: diskreports; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.diskreports (
+    id integer NOT NULL,
+    client_id integer,
+    memory_in_use double precision NOT NULL,
+    total_memory double precision NOT NULL,
+    name character varying(100) NOT NULL,
+    report_date timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.diskreports OWNER TO postgres;
+
+--
+-- TOC entry 221 (class 1259 OID 32832)
+-- Name: diskreports_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.diskreports_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.diskreports_id_seq OWNER TO postgres;
+
+--
+-- TOC entry 4829 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: diskreports_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.diskreports_id_seq OWNED BY public.diskreports.id;
+
+
+--
+-- TOC entry 4653 (class 2604 OID 24687)
+-- Name: client id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.client ALTER COLUMN id SET DEFAULT nextval('public.client_id_seq'::regclass);
+
+
+--
+-- TOC entry 4657 (class 2604 OID 24703)
+-- Name: clientlog id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clientlog ALTER COLUMN id SET DEFAULT nextval('public.clientlog_id_seq'::regclass);
+
+
+--
+-- TOC entry 4659 (class 2604 OID 32836)
+-- Name: diskreports id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.diskreports ALTER COLUMN id SET DEFAULT nextval('public.diskreports_id_seq'::regclass);
+
+
+--
+-- TOC entry 4817 (class 0 OID 24684)
+-- Dependencies: 218
+-- Data for Name: client; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.client VALUES (3, '192.168.1.3', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:03', 'hola', 'Santa Cruz');
+INSERT INTO public.client VALUES (4, '192.168.1.4', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:04', 'hola', 'Pando');
+INSERT INTO public.client VALUES (5, '192.168.1.5', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:05', 'hola', 'Beni');
+INSERT INTO public.client VALUES (6, '192.168.1.6', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:06', 'hola', 'Oruro');
+INSERT INTO public.client VALUES (7, '192.168.1.7', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:07', 'hola', 'Potosí');
+INSERT INTO public.client VALUES (8, '192.168.1.8', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:08', 'hola', 'La Paz');
+INSERT INTO public.client VALUES (9, '192.168.1.9', '2025-02-25 21:52:48.940086', '2025-02-25 21:52:48.940086', 'desconectado', false, '00:1A:2B:3C:4D:09', 'hola', 'Chuquisaca');
+INSERT INTO public.client VALUES (13, '192.168.0.82', '2025-02-25 23:48:05.25097', '2025-02-25 23:48:05.25097', 'conectado', false, 'C0-3E-BA-12-54-39', 'hola', 'Desconocido');
+INSERT INTO public.client VALUES (14, '192.168.0.82', '2025-02-25 23:55:06.827638', '2025-02-25 23:55:24.697877', 'desconectado', false, 'C0-3E-BA-12-54-39', 'hola', 'Desconocido');
+INSERT INTO public.client VALUES (19, '192.168.0.82', '2025-02-25 23:55:52.298414', '2025-02-25 23:56:25.71078', 'desconectado', false, 'C0-3E-BA-12-54-39', 'hola', 'Desconocido');
+INSERT INTO public.client VALUES (20, '192.168.0.82', '2025-02-26 00:38:50.003888', '2025-02-26 00:38:50.003888', 'conectado', false, 'C0-3E-BA-12-54-39', 'hola', 'Desconocido');
+INSERT INTO public.client VALUES (1, '192.168.0.82', '2025-02-25 21:52:48.940086', '2025-02-26 00:49:41.019965', 'desconectado', false, 'C0-3E-BA-12-54-39', 'hola', 'Tarija');
+INSERT INTO public.client VALUES (2, '192.168.0.82', '2025-02-25 21:52:48.940086', '2025-02-26 01:05:52.605636', 'desconectado', false, 'C0-3E-BA-12-54-39', 'hola', 'Cochabamba');
+
+
+--
+-- TOC entry 4819 (class 0 OID 24700)
+-- Dependencies: 220
+-- Data for Name: clientlog; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.clientlog VALUES (37, 13, 'New client added - ID: 13, IP: 192.168.0.82, MAC: C0-3E-BA-12-54-39, Created at: 2025-02-25 23:48:05.25097', '2025-02-25 23:48:05.25097', 'INSERT');
+INSERT INTO public.clientlog VALUES (38, 14, 'New client added - ID: 14, IP: 192.168.0.82, MAC: C0-3E-BA-12-54-39, Created at: 2025-02-25 23:55:06.827638', '2025-02-25 23:55:06.827638', 'INSERT');
+INSERT INTO public.clientlog VALUES (39, 14, 'Update: Status changed from conectado to desconectado. ', '2025-02-25 23:55:24.697877', 'UPDATEe');
+INSERT INTO public.clientlog VALUES (40, 19, 'New client added - ID: 19, IP: 192.168.0.82, MAC: C0-3E-BA-12-54-39, Created at: 2025-02-25 23:55:52.298414', '2025-02-25 23:55:52.298414', 'INSERT');
+INSERT INTO public.clientlog VALUES (41, 19, 'Update: Status changed from conectado to desconectado. ', '2025-02-25 23:56:25.71078', 'UPDATEe');
+INSERT INTO public.clientlog VALUES (42, 1, 'Update: ', '2025-02-26 00:35:19.69085', 'UPDATEe');
+INSERT INTO public.clientlog VALUES (43, 20, 'New client added - ID: 20, IP: 192.168.0.82, MAC: C0-3E-BA-12-54-39, Created at: 2025-02-26 00:38:50.003888', '2025-02-26 00:38:50.003888', 'INSERT');
+INSERT INTO public.clientlog VALUES (44, 1, 'Update: ', '2025-02-26 00:44:27.514474', 'UPDATEe');
+INSERT INTO public.clientlog VALUES (45, 1, 'Update: Status changed from conectado to desconectado. ', '2025-02-26 00:49:41.019965', 'UPDATEe');
+INSERT INTO public.clientlog VALUES (46, 2, 'Update: Status changed from desconectado to conectado. ', '2025-02-26 01:00:10.404981', 'UPDATEe');
+INSERT INTO public.clientlog VALUES (47, 2, 'Update: Status changed from conectado to desconectado. ', '2025-02-26 01:05:52.605636', 'UPDATEe');
+
+
+--
+-- TOC entry 4821 (class 0 OID 32833)
+-- Dependencies: 222
+-- Data for Name: diskreports; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO public.diskreports VALUES (1, 1, 155.75432968139648, 157.63401794433594, 'C:\', '2025-02-26 00:45:25.992039');
+INSERT INTO public.diskreports VALUES (2, 1, 155.75798416137695, 157.63401794433594, 'C:\', '2025-02-26 00:46:26.410032');
+INSERT INTO public.diskreports VALUES (3, 1, 155.75575256347656, 157.63401794433594, 'C:\', '2025-02-26 00:47:26.808041');
+INSERT INTO public.diskreports VALUES (4, 1, 155.75833129882812, 157.63401794433594, 'C:\', '2025-02-26 00:48:26.421308');
+INSERT INTO public.diskreports VALUES (5, 1, 155.76798248291016, 157.63401794433594, 'C:\', '2025-02-26 00:49:26.337862');
+INSERT INTO public.diskreports VALUES (6, 2, 155.76075744628906, 157.63401794433594, 'C:\', '2025-02-26 01:00:36.007738');
+INSERT INTO public.diskreports VALUES (7, 2, 155.76132202148438, 157.63401794433594, 'C:\', '2025-02-26 01:01:36.064169');
+INSERT INTO public.diskreports VALUES (8, 2, 155.7588882446289, 157.63401794433594, 'C:\', '2025-02-26 01:02:35.669755');
+INSERT INTO public.diskreports VALUES (9, 2, 155.76007843017578, 157.63401794433594, 'C:\', '2025-02-26 01:03:35.639501');
+INSERT INTO public.diskreports VALUES (10, 2, 155.7611541748047, 157.63401794433594, 'C:\', '2025-02-26 01:04:35.951599');
+INSERT INTO public.diskreports VALUES (11, 2, 155.76809692382812, 157.63401794433594, 'C:\', '2025-02-26 01:05:35.932993');
+
+
+--
+-- TOC entry 4830 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: client_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.client_id_seq', 13, true);
+
+
+--
+-- TOC entry 4831 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: clientlog_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.clientlog_id_seq', 47, true);
+
+
+--
+-- TOC entry 4832 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: diskreports_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
+--
+
+SELECT pg_catalog.setval('public.diskreports_id_seq', 11, true);
+
+
+--
+-- TOC entry 4662 (class 2606 OID 24693)
+-- Name: client client_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.client
+    ADD CONSTRAINT client_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4664 (class 2606 OID 24708)
+-- Name: clientlog clientlog_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clientlog
+    ADD CONSTRAINT clientlog_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4666 (class 2606 OID 32839)
+-- Name: diskreports diskreports_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.diskreports
+    ADD CONSTRAINT diskreports_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 4669 (class 2620 OID 32846)
+-- Name: client trigger_log_client_changes; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trigger_log_client_changes AFTER UPDATE ON public.client FOR EACH ROW EXECUTE FUNCTION public.log_client_changes();
+
+
+--
+-- TOC entry 4670 (class 2620 OID 32848)
+-- Name: client trigger_log_client_insert; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trigger_log_client_insert AFTER INSERT ON public.client FOR EACH ROW EXECUTE FUNCTION public.log_client_insert();
+
+
+--
+-- TOC entry 4667 (class 2606 OID 24709)
+-- Name: clientlog clientlog_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.clientlog
+    ADD CONSTRAINT clientlog_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.client(id) ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4668 (class 2606 OID 32840)
+-- Name: diskreports diskreports_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.diskreports
+    ADD CONSTRAINT diskreports_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.client(id) ON DELETE CASCADE;
+
+
+-- Completed on 2025-02-26 01:20:11
+
+--
+-- PostgreSQL database dump complete
+--
+
